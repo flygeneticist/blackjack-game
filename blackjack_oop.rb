@@ -67,34 +67,36 @@ class Casino
     dealer_score = dealer.value[0]
     @round_queue.each do |player|
       player[1].value.each do |player_score|
-        if player_score > dealer_score && player_score <= 21
-          if player_score == 21
-            puts "#{player[1].name} got blackjack!"
-            winnings = player[1].wager + player[1].wager*(3/2) # pays out 3:2
-            player[1].bank += winnings
-          else
-            puts "#{player[1].name} beat the dealer!"
-            winnings = player[1].wager * 2 # pays out 2:1
-            player[1].bank += winnings
+        if dealer_score > 21
+          winnings = player[1].wager * 2 # pays out 2:1
+          player[1].bank += winnings
+           puts "#{player[1].name}: won $#{winnings} and now has $#{player[1].bank} total."
+        else
+          if player_score > dealer_score && player_score <= 21
+            if player_score == 21
+              puts "#{player[1].name} got blackjack!"
+              winnings = player[1].wager + player[1].wager*(3/2) # pays out 3:2
+              player[1].bank += winnings
+            else
+              winnings = player[1].wager * 2 # pays out 2:1
+              player[1].bank += winnings
+            end
+            puts "#{player[1].name}: won $#{winnings} and now has $#{player[1].bank} total."
+          elsif player_score == dealer_score
+              winnings = player[1].wager # pays back player's wager
+              player[1].bank += winnings
+              puts "#{player[1].name}: pushed and got back the bet of $#{winnings} and now has $#{player[1].bank} total."
+          else # player lost to dealer
+            puts "#{player[1].name}: lost $#{player[1].wager} and now has $#{player[1].bank} total."
           end
-          puts "#{player[1].name}: won $#{winnings} and now has $#{player[1].bank} total."
-          puts
-        elsif player_score == dealer_score
-            winnings = player[1].wager # pays back player's wager
-            player[1].bank += winnings
-            puts "#{player[1].name}: pushed and got back the bet of $#{winnings} and now has $#{player[1].bank} total."
-            puts
-        else # player lost to dealer
-          puts "#{player[1].name}: lost $#{player[1].wager} and now has $#{player[1].bank} total."
-          puts
         end
         player_leaves_round(player[1].name)
       end
       if player[1].bank <= 0
         puts "#{player[1].name} has run out of money and was kicked out of the casino!"
         player_leaves_casino(player[1].name)
-        puts
       end
+    puts
     end
   end
 end
@@ -137,11 +139,12 @@ class Player
       # bet meets all criteria...
       @bank -= bet
       @wager = bet
-      # reset the previous rounds values and hands
+      # reset the previous round's values and hands
       @hands = []
+      @hands_counter = 0
       @value = []
       puts "#{@name} antes up $#{bet}. Bank left: $#{@bank}."
-      @kill_check == false
+      @kill_check = false
       casino.player_joins_round(@name) # adds a new player to the next round's lineup
     end
     puts
@@ -173,7 +176,12 @@ class Player
             @value[@hands_counter] += card[0]
           end
         end
-      puts "#{@name}'s hand ##{@hands_counter+1} totals: #{@value[@hands_counter]}"
+      if @hands[@hands_counter].length == 2 && @value[@hands_counter] == 21
+        puts "#{@name}'s hand ##{@hands_counter+1} totals: #{@value[@hands_counter]}"
+        puts "Blackjack!"
+      else
+        puts "#{@name}'s hand ##{@hands_counter+1} totals: #{@value[@hands_counter]}"
+      end
     end
   end
 
@@ -249,7 +257,6 @@ end
 # ------ runtime code below here ------
 # sets up the game with a casino, dealer, and a deck of cards
 casino = Casino.new
-dealer = Dealer.new
 casino.make_a_deck
 puts "Welcome to the world's finest blackjack casino."
 # get the # of initial players and their names from the users
@@ -264,11 +271,11 @@ num_players.times do |player| # for each player playing get their name
 end
 
 while casino.casino_players != 0
-  puts
+  dealer = Dealer.new # the dealers get tired quickly in this casino and need to be replaced often
+  puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
   puts "Let's start the next round!"
   puts "The Dealer will now be accepting bets."
   puts
-  binding.pry
   # allow for all players present in the casino to ante up and get in on the next round
   casino.casino_players.each do |player|
     player[1].ante_up(casino)
