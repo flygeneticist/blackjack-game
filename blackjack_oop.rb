@@ -77,7 +77,10 @@ class Casino
     dealer_score = dealer.value[0]
     @round_queue.each do |player|
       player[1].value.each do |player_score|
-        if dealer_score > 21 && player_score <= 21
+        if player_score == 100
+          @bank += @wager/2
+          puts "#{@name} surrenders and recieves $#{@wager/2}. Bank left: $#{@bank}."
+        elsif dealer_score > 21 && player_score <= 21
           winnings = player[1].wager * 2 # pays out 2:1
           player[1].bank += winnings
            puts "#{player[1].name}: won $#{winnings} and now has $#{player[1].bank} total."
@@ -207,21 +210,44 @@ class Player
   def decide_next_move (casino)
     if (@value[@hands_counter] <= 21)
       puts 'What do you want to do?'
-      print 'Hit or Stand (Special case: Split): '
+      puts "Special cases: Double Down, Split, or Surrender: "
+      print "Standard choices: Hit or Stand? "
       choice = gets.chomp.downcase
+      # check user input to determine correct action to take
       case choice
-        when 'hit'
+        when 'double down' # take one more card, double wager, and force stand on that hand
+          then
+            if @hands[@hands_counter].length == 2 # only available if first turn
+              @wager += @wager
+              casino.deal_card(self)
+              evaluate_hand
+              stand
+            else
+              puts "You cannot double down on this hand."
+              decide_next_move (casino)
+            end
+        when 'hit' # take one card
           then
             casino.deal_card(self)
             take_a_turn (casino)
-        when 'stand'
+        when 'stand' # end round and take current score
           then stand
-        when 'split'
+        when 'split' # split hand and play each seperately
           then
             if @hands[@hands_counter][0] == @hands[@hands_counter][1]
               casino.split_hand(self)
             else
               puts "You cannot split that hand!"
+              decide_next_move (casino)
+            end
+        when 'surrender' # allow late-surrender only! loose 1/2 wager and fold.
+          then
+            if @hands[@hands_counter].length != 2 # only available after first turn
+              puts "You surrender this hand and fold."
+              @value[@hands_counter] = 100 # ie forces a bust
+              bust
+            else
+              puts "You cannot surrender a hand until having drawn at least one card."
               decide_next_move (casino)
             end
         else
