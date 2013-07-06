@@ -183,7 +183,7 @@ class Player
           else
             bust
           end
-        elsif card[0] == 'J' || card[0] == 'Q' || card[0] == 'K' # face card => 10 pts
+        elsif card[0].to_i == 0 # face card => 10 pts
           @value[@hands_counter] += 10
         else # normal number => take face value
           @value[@hands_counter] += card[0]
