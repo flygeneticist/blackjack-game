@@ -1,4 +1,4 @@
-require 'pry'
+#require 'pry'
 
 class Casino
   attr_accessor :deck, :casino_players, :round_queue
@@ -51,6 +51,7 @@ class Casino
     dealer.hands << @deck.pop(2)
     # let players know what the first card the dealer has.
     puts "The Dealer has a #{dealer.hands[0][0].join("-")} showing."
+    # this is the point at which insurance would be offered if dealer has an ace showing...
     puts
   end
 
@@ -62,12 +63,21 @@ class Casino
     player.display_hand
   end
 
+  #split up a hand into two seperate hands
+  def split_hand (player)
+    while player.hands_counter <= player.hands.length
+      deal_card (player)
+      take_a_turn (self)
+      hands_counter += 1
+    end
+  end
+
   # handles all of the money exchanges for the players who've not busted at the end of the round.
   def settle_scores (dealer)
     dealer_score = dealer.value[0]
     @round_queue.each do |player|
       player[1].value.each do |player_score|
-        if dealer_score > 21
+        if dealer_score > 21 && player_score <= 21
           winnings = player[1].wager * 2 # pays out 2:1
           player[1].bank += winnings
            puts "#{player[1].name}: won $#{winnings} and now has $#{player[1].bank} total."
@@ -75,7 +85,7 @@ class Casino
           if player_score > dealer_score && player_score <= 21
             if player_score == 21
               puts "#{player[1].name} got blackjack!"
-              winnings = player[1].wager + player[1].wager*(3/2) # pays out 3:2
+              winnings = (player[1].wager + player[1].wager*(3.0/2.0)).to_i # pays out 3:2
               player[1].bank += winnings
             else
               winnings = player[1].wager * 2 # pays out 2:1
@@ -159,29 +169,67 @@ class Player
   def evaluate_hand
     unless @kill_check
       @value[@hands_counter] = 0
-        # sort by numbers first then by stings to get
-        # then sort the hand's cards to do ACEs last
-        @hands[@hands_counter].sort_by {|target| target[0].to_i}.each do |card|
-          if card[0] == 'A' # ACE cards need to determine best choice: 11 or 1
-            if (@value[@hands_counter] + 11) <= 21
-              @value[@hands_counter] += 11
-            elsif (@value[@hands_counter] + 1) <= 21
-              @value[@hands_counter] += 1
-            else
-              bust
-            end
-          elsif card[0] == 'J' || card[0] == 'Q' || card[0] == 'K' # face card => 10 pts
-            @value[@hands_counter] += 10
-          else # normal number => take face value
-            @value[@hands_counter] += card[0]
+      # sort by numbers first then by stings to get
+      # then sort the hand's cards to do ACEs last
+      @hands[@hands_counter].sort_by {|target| target[0].to_i}.each do |card|
+        if card[0] == 'A' # ACE cards need to determine best choice: 11 or 1
+          if (@value[@hands_counter] + 11) <= 21
+            @value[@hands_counter] += 11
+          elsif (@value[@hands_counter] + 1) <= 21
+            @value[@hands_counter] += 1
+          else
+            bust
           end
+        elsif card[0] == 'J' || card[0] == 'Q' || card[0] == 'K' # face card => 10 pts
+          @value[@hands_counter] += 10
+        else # normal number => take face value
+          @value[@hands_counter] += card[0]
         end
-      if @hands[@hands_counter].length == 2 && @value[@hands_counter] == 21
-        puts "#{@name}'s hand ##{@hands_counter+1} totals: #{@value[@hands_counter]}"
-        puts "Blackjack!"
+      end
+      # the checks below are special for the first turn only (2 cards)
+      if @hands[@hands_counter].length == 2
+        # checks for a blackjack on the first deal
+        if @value[@hands_counter] == 21
+          puts "#{@name}'s hand ##{@hands_counter+1} totals: #{@value[@hands_counter]}"
+          puts "Blackjack!"
+        # checks for the option to split a hand (two cards with the same face)
+        elsif @hands[@hands_counter][0][0] == @hands[@hands_counter][1][0]
+          puts "#{@name}'s hand ##{@hands_counter+1} totals: #{@value[@hands_counter]}"
+          puts "This hand can be split if you wish."
+        end
       else
+        # if no special starting hands are found display standard message
         puts "#{@name}'s hand ##{@hands_counter+1} totals: #{@value[@hands_counter]}"
       end
+    end
+  end
+
+  def decide_next_move (casino)
+    if (@value[@hands_counter] <= 21)
+      puts 'What do you want to do?'
+      print 'Hit or Stand (Special case: Split): '
+      choice = gets.chomp.downcase
+      case choice
+        when 'hit'
+          then
+            casino.deal_card(self)
+            take_a_turn (casino)
+        when 'stand'
+          then stand
+        when 'split'
+          then
+            if @hands[@hands_counter][0] == @hands[@hands_counter][1]
+              casino.split_hand(self)
+            else
+              puts "You cannot split that hand!"
+              decide_next_move (casino)
+            end
+        else
+          puts 'I did not understand that command. Please try again.'
+          decide_next_move (casino)
+      end
+    else
+      bust
     end
   end
 
@@ -191,27 +239,6 @@ class Player
       return false
     else
       return true
-    end
-  end
-
-  def decide_next_move (casino)
-    if (@value[@hands_counter] <= 21)
-      puts 'What do you want to do?'
-      print 'Hit, Stand, or Check hand: '
-      choice = gets.chomp.downcase
-      case choice
-        when 'hit'
-          then
-            casino.deal_card(self)
-            take_a_turn (casino)
-        when 'stand'
-          then stand
-        else
-          puts 'I did not understand that command. Please try again.'
-          decide_next_move (casino)
-      end
-    else
-      bust
     end
   end
 
@@ -280,7 +307,7 @@ while casino.casino_players != 0
   casino.casino_players.each do |player|
     player[1].ante_up(casino)
   end
-  # let the casino deal out all of the hands for the round
+  # let the get a hands for the round
   casino.deal_out_hands (dealer)
   # begin the main play allowing each player at the table to play in turn
   casino.round_queue.each do |player|
@@ -288,8 +315,8 @@ while casino.casino_players != 0
     player[1].take_a_turn (casino)
   end
   # after the players have gone, the dealer shows his hand and plays
-
-  # if all players bust dealer does not go. Set dealer score == 21 and move to settling money.
+  # if all players bust dealer does not go.
+  # set dealer score == 21 and move on to settling money.
   dealer.display_hand
   dealer.take_a_turn (casino)
   # Setting the winnings/losses after the dealer busts or stands.
@@ -297,4 +324,3 @@ while casino.casino_players != 0
 end
 puts
 puts "Thank you for playing!"
-
