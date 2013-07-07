@@ -8,11 +8,9 @@ class Casino
     @table_limit = 100
     @casino_players = {} # will hold all players at a table, playing or not
     @round_queue = {} # will hold all players who are actively playing a round
-    # hash queues are structured as {:player_name => player_object}
   end
 
-  # make the deck at the start of a round
-  def make_a_deck
+  def make_a_deck # make the deck at the start of a round
     self.deck = [] # clear the previous round's left over deck
     card_faces = [2,3,4,5,6,7,8,9,10,'J','Q','K','A']
     card_suits = ['C','D','H','S']
@@ -22,19 +20,19 @@ class Casino
   end
 
   #control the flow of players at the table and players playing a round
-  def player_enters_casino player_name # add a new player to the casino floor
+  def player_enters_casino (player_name) # add a new player to the casino floor
     self.casino_players["#{player_name}"] = Player.new("#{player_name}")
   end
 
-  def player_leaves_casino player_name # remove player completely from the casino
+  def player_leaves_casino (player_name) # remove player completely from the casino
     self.casino_players.delete("#{player_name}")
   end
 
-  def player_joins_round player_name # add a player to the next round at the table
+  def player_joins_round (player_name) # add a player to the next round at the table
     self.round_queue["#{player_name}"] = self.casino_players["#{player_name}"]
   end
 
-  def player_leaves_round player_name # remove player from next round, but not the casino floor
+  def player_leaves_round (player_name) # remove player from next round, but not the casino floor
     self.round_queue.delete("#{player_name}")
   end
 
@@ -45,9 +43,8 @@ class Casino
         player[1].hands << self.deck.pop(2)
     end
     dealer.hands << self.deck.pop(2)
-    # let players know what the first card the dealer has.
+    # let players know what the dealer's first card is.
     puts "The Dealer has a #{dealer.hands[0][0].join("-")} showing."
-    # this is the point at which insurance would be offered if dealer has an ace showing...
     puts
   end
 
@@ -56,11 +53,9 @@ class Casino
     puts
     puts "#{player.name} drew a: " + new_card.join("-").to_s
     player.hands[player.hands_counter] << new_card
-    player.take_a_turn (self)
   end
 
-  #split up a hand into two seperate hands
-  def split_hand (player)
+  def split_hand (player) #split up a hand into two seperate hands
     while player.hands_counter <= player.hands.length
       deal_card (player)
       take_a_turn (self)
@@ -71,10 +66,10 @@ class Casino
   # handles all of the money exchanges for the players who've not busted at the end of the round.
   def settle_scores (dealer)
     dealer_score = dealer.value[0]
-    @round_queue.each do |player|
+    self.round_queue.each do |player|
       player[1].value.each do |player_score|
         if player_score == 100
-          @bank += @wager/2
+          self.bank += self.wager/2
           puts "#{name} surrenders and recieves $#{wager/2}. Bank left: $#{bank}."
         elsif dealer_score > 21 && player_score <= 21
           winnings = player[1].wager * 2 # pays out 2:1
@@ -115,7 +110,7 @@ class Player
   attr_accessor :hands, :hands_counter, :wager, :bank, :value, :kill_check
   attr_reader :name
 
-  def initialize name
+  def initialize (name)
     @kill_check = false
     @name = name
     @hands = []
@@ -136,7 +131,7 @@ class Player
 
   def display_hand
     print "#{name}'s hand ##{self.hands_counter+1}: "
-    self.hands[self.hands_counter].each {|card| print "#{card.join("-")} "}
+    self.hands[self.hands_counter].each {|card| print "#{card.join("-")}, "}
     print " and totals: #{value[self.hands_counter]}"
     puts
   end
@@ -219,13 +214,12 @@ class Player
               evaluate_hand
               stand
             else
-              puts "You cannot double down on this hand."
-              decide_next_move (casino)
+              reset_bad_choice(choice, casino)
             end
         when 'hit' # take one card
           then
             casino.deal_card(self)
-            take_a_turn (casino)
+            player.take_a_turn (self)
         when 'stand' # end round and take current score
           then stand
         when 'split' # split hand and play each seperately
@@ -233,26 +227,28 @@ class Player
             if self.hands[self.hands_counter][0] == self.hands[self.hands_counter][1]
               casino.split_hand(self)
             else
-              puts "You cannot split that hand!"
-              decide_next_move (casino)
+              reset_bad_choice(choice, casino)
             end
         when 'surrender' # allow late-surrender only! loose 1/2 wager and fold.
           then
             if self.hands[self.hands_counter].length != 2 # only available after first turn
               puts "You surrender this hand and fold."
-              self.value[self.hands_counter] = 100 # ie forces a bust
               bust
             else
-              puts "You cannot surrender a hand until having drawn at least one card."
-              decide_next_move (casino)
+              reset_bad_choice(choice, casino)
             end
-        else
-          puts 'I did not understand that command. Please try again.'
-          decide_next_move (casino)
+      else
+        puts 'I did not understand that command. Please try again.'
+        decide_next_move (casino)
       end
     else
       bust
     end
+  end
+
+  def reset_bad_choice(choice, casino)
+    puts "You cannot #{choice} that hand!"
+    decide_next_move (casino)
   end
 
   private
@@ -264,16 +260,15 @@ class Player
     end
   end
 
-  # end evaluate_hand loop w/o changing hand_value further.
-  def stand
+  def stand # end evaluate_hand loop w/o changing hand_value further.
     self.kill_check = true
     puts "#{name} stands."
     puts
   end
 
-  # hand went over 21 and player loses.
-  def bust
+  def bust # hand went over 21 and player loses.
     self.kill_check = true
+    self.value[self.hands_counter] = 100 # ie forces a bust
     puts "#{name} has busted!"
     puts
   end
@@ -304,9 +299,7 @@ class Dealer < Player
 end
 
 class Blackjack
-  # ------ blackjack game runtime code goes here ------
-  def start
-    # sets up the game with a casino, dealer, and a deck of cards
+  def start # sets up the game with a casino, dealer, a deck of cards, and runs.
     casino = Casino.new
     casino.make_a_deck
     puts "Welcome to the world's finest blackjack casino."
