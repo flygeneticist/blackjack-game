@@ -13,13 +13,11 @@ class Casino
 
   # make the deck at the start of a round
   def make_a_deck
-    @deck = [] # clear the previous round's left over deck
+    self.deck = [] # clear the previous round's left over deck
     card_faces = [2,3,4,5,6,7,8,9,10,'J','Q','K','A']
     card_suits = ['C','D','H','S']
     # sets up a 4 deck stack for the game
-    card_faces.each do |face|
-      card_suits.each {|suit| 4.times {deck << [face, suit]}}
-    end
+    4.times {deck.concat card_faces.product(card_suits)}
     self.deck = self.deck.shuffle
   end
 
@@ -58,7 +56,7 @@ class Casino
     puts
     puts "#{player.name} drew a: " + new_card.join("-").to_s
     player.hands[player.hands_counter] << new_card
-    player.display_hand
+    player.take_a_turn (self)
   end
 
   #split up a hand into two seperate hands
@@ -114,7 +112,9 @@ end
 
 
 class Player
-  attr_accessor :hands, :hands_counter, :wager, :name, :bank, :value, :kill_check
+  attr_accessor :hands, :hands_counter, :wager, :bank, :value, :kill_check
+  attr_reader :name
+
   def initialize name
     @kill_check = false
     @name = name
@@ -125,11 +125,19 @@ class Player
     @wager = 0
   end
 
-  def display_hand # this will display one hand only
-    print "#{name}'s hand ##{hands_counter+1}: "
-    self.hands[self.hands_counter].each do |card|
-      print "#{card.join("-")} "
+  def take_a_turn (casino)
+    unless self.kill_check
+      evaluate_hand
+      check_for_special_hand
+      display_hand
+      decide_next_move (casino)
     end
+  end
+
+  def display_hand
+    print "#{name}'s hand ##{self.hands_counter+1}: "
+    self.hands[self.hands_counter].each {|card| print "#{card.join("-")} "}
+    print " and totals: #{value[self.hands_counter]}"
     puts
   end
 
@@ -140,8 +148,8 @@ class Player
     puts "Minimum buy-in of $#{casino.table_min} and a table limit of $#{casino.table_limit}."
     print "You may also bet $0 to skip out on this round: $"
     bet = gets.chomp.to_i
-    if bet == 0 # do not add player to the round if place a zero or negative bet
-
+    if bet == 0 # do not add player to the round if zero or negative bet
+      return
     else
       while bet > casino.table_limit || bet < casino.table_min || check_wager(bet) == false
         print 'That is not an acceptable wager. Please try again: '
@@ -161,46 +169,36 @@ class Player
     puts
   end
 
-  def take_a_turn (casino)
-    evaluate_hand
-    decide_next_move (casino)
-  end
-
  # run through a player's cards in their hand to get the total
   def evaluate_hand
-    unless self.kill_check
-      self.value[self.hands_counter] = 0
-      # sort by numbers first then by stings to get
-      # then sort the hand's cards to do ACEs last
-      self.hands[self.hands_counter].sort_by {|target| target[0].to_i}.each do |card|
-        if card[0] == 'A' # ACE cards need to determine best choice: 11 or 1
-          if (self.value[self.hands_counter] + 11) <= 21
-            self.value[self.hands_counter] += 11
-          elsif (self.value[self.hands_counter] + 1) <= 21
-            self.value[self.hands_counter] += 1
-          else
-            bust
-          end
-        elsif card[0].to_i == 0 # face card => 10 pts
-          self.value[self.hands_counter] += 10
-        else # normal number => take face value
-          self.value[self.hands_counter] += card[0]
+    self.value[self.hands_counter] = 0
+    # sort by numbers first then by stings to get ACEs last
+    self.hands[self.hands_counter].sort_by {|target| target[0].to_i}.each do |card|
+      if card[0] == 'A' # ACE cards need to determine best choice: 11 or 1
+        if (self.value[self.hands_counter] + 11) <= 21
+          self.value[self.hands_counter] += 11
+        elsif (self.value[self.hands_counter] + 1) <= 21
+          self.value[self.hands_counter] += 1
+        else
+          bust
         end
+      elsif card[0].to_i == 0 # face card => 10 pts
+        self.value[self.hands_counter] += 10
+      else # normal number => take face value
+        self.value[self.hands_counter] += card[0]
       end
-      # the checks below are special for the first turn only (2 cards)
-      if self.hands[self.hands_counter].length == 2
-        # checks for a blackjack on the first deal
-        if self.value[self.hands_counter] == 21
-          puts "#{name}'s hand ##{self.hands_counter+1} totals: #{value[self.hands_counter]}"
-          puts "Blackjack!"
-        # checks for the option to split a hand (two cards with the same face)
-        elsif self.hands[self.hands_counter][0][0] == self.hands[self.hands_counter][1][0]
-          puts "#{name}'s hand ##{self.hands_counter+1} totals: #{value[self.hands_counter]}"
-          puts "This hand can be split if you wish."
-        end
-      else
-        # if no special starting hands are found display standard message
-        puts "#{name}'s hand ##{hands_counter+1} totals: #{value[self.hands_counter]}"
+    end
+  end
+
+  def check_for_special_hand
+    # the checks below are special for the first turn only (2 cards)
+    if self.hands[self.hands_counter].length == 2
+      # checks for a blackjack on the first deal
+      if self.value[self.hands_counter] == 21
+        puts "Blackjack!"
+      # checks for the option to split a hand (two cards with the same face)
+      elsif self.hands[self.hands_counter][0][0] == self.hands[self.hands_counter][1][0]
+        puts "This hand can be split if you wish."
       end
     end
   end
@@ -337,7 +335,6 @@ class Blackjack
       casino.deal_out_hands (dealer)
       # begin the main play allowing each player at the table to play in turn
       casino.round_queue.each do |player|
-        player[1].display_hand
         player[1].take_a_turn (casino)
       end
       # after the players have gone, the dealer shows his hand and plays
@@ -351,7 +348,6 @@ class Blackjack
         end
       end
       if viable_player
-        dealer.display_hand
         dealer.take_a_turn (casino)
       else
         dealer.value = 22
