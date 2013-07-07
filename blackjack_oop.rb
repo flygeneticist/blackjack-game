@@ -1,5 +1,3 @@
-#require 'pry'
-
 class Casino
   attr_accessor :deck, :casino_players, :round_queue
   attr_reader :table_limit, :table_min
@@ -8,9 +6,9 @@ class Casino
     @deck = []
     @table_min = 10
     @table_limit = 100
-    # hash queues structured as {:player_name => player_object}
     @casino_players = {} # will hold all players at a table, playing or not
     @round_queue = {} # will hold all players who are actively playing a round
+    # hash queues are structured as {:player_name => player_object}
   end
 
   # make the deck at the start of a round
@@ -20,35 +18,35 @@ class Casino
     card_suits = ['C','D','H','S']
     # sets up a 4 deck stack for the game
     card_faces.each do |face|
-      card_suits.each {|suit| 4.times {@deck << [face, suit]}}
+      card_suits.each {|suit| 4.times {deck << [face, suit]}}
     end
-    @deck = @deck.shuffle
+    self.deck = self.deck.shuffle
   end
 
   #control the flow of players at the table and players playing a round
   def player_enters_casino player_name # add a new player to the casino floor
-    @casino_players["#{player_name}"] = Player.new("#{player_name}")
+    self.casino_players["#{player_name}"] = Player.new("#{player_name}")
   end
 
   def player_leaves_casino player_name # remove player completely from the casino
-    @casino_players.delete("#{player_name}")
+    self.casino_players.delete("#{player_name}")
   end
 
   def player_joins_round player_name # add a player to the next round at the table
-    @round_queue["#{player_name}"] = @casino_players["#{player_name}"]
+    self.round_queue["#{player_name}"] = self.casino_players["#{player_name}"]
   end
 
   def player_leaves_round player_name # remove player from next round, but not the casino floor
-    @round_queue.delete("#{player_name}")
+    self.round_queue.delete("#{player_name}")
   end
 
   # start the round using the new list of bidding players
   def deal_out_hands (dealer)
     puts "No more bets please. The cards are being dealt."
-    @round_queue.each do |player|
-        player[1].hands << @deck.pop(2)
+    self.round_queue.each do |player|
+        player[1].hands << self.deck.pop(2)
     end
-    dealer.hands << @deck.pop(2)
+    dealer.hands << self.deck.pop(2)
     # let players know what the first card the dealer has.
     puts "The Dealer has a #{dealer.hands[0][0].join("-")} showing."
     # this is the point at which insurance would be offered if dealer has an ace showing...
@@ -79,7 +77,7 @@ class Casino
       player[1].value.each do |player_score|
         if player_score == 100
           @bank += @wager/2
-          puts "#{@name} surrenders and recieves $#{@wager/2}. Bank left: $#{@bank}."
+          puts "#{name} surrenders and recieves $#{wager/2}. Bank left: $#{bank}."
         elsif dealer_score > 21 && player_score <= 21
           winnings = player[1].wager * 2 # pays out 2:1
           player[1].bank += winnings
@@ -116,7 +114,7 @@ end
 
 
 class Player
-  attr_accessor :hands, :hands_counter, :wager, :name, :bank, :value
+  attr_accessor :hands, :hands_counter, :wager, :name, :bank, :value, :kill_check
   def initialize name
     @kill_check = false
     @name = name
@@ -128,8 +126,8 @@ class Player
   end
 
   def display_hand # this will display one hand only
-    print "#{@name}'s hand ##{@hands_counter+1}: "
-    @hands[@hands_counter].each do |card|
+    print "#{name}'s hand ##{hands_counter+1}: "
+    self.hands[self.hands_counter].each do |card|
       print "#{card.join("-")} "
     end
     puts
@@ -137,9 +135,9 @@ class Player
 
   # player must ante up to get into the game. Take user's bet.
   def ante_up (casino)
-    puts "#{@name}'s Turn:"
+    puts "#{name}'s Turn:"
     puts "How much money (if any) are you wagering this round?"
-    puts "Mininimum buy-in of $#{casino.table_min} and a table limit of $#{casino.table_limit}."
+    puts "Minimum buy-in of $#{casino.table_min} and a table limit of $#{casino.table_limit}."
     print "You may also bet $0 to skip out on this round: $"
     bet = gets.chomp.to_i
     if bet == 0 # do not add player to the round if place a zero or negative bet
@@ -150,15 +148,15 @@ class Player
         bet = gets.chomp.to_i
       end
       # bet meets all criteria...
-      @bank -= bet
-      @wager = bet
+      self.bank -= bet
+      self.wager = bet
       # reset the previous round's values and hands
-      @hands = []
-      @hands_counter = 0
-      @value = []
-      puts "#{@name} antes up $#{bet}. Bank left: $#{@bank}."
-      @kill_check = false
-      casino.player_joins_round(@name) # adds a new player to the next round's lineup
+      self.hands = []
+      self.hands_counter = 0
+      self.value = []
+      puts "#{name} antes up $#{bet}. Bank left: $#{bank}."
+      self.kill_check = false
+      casino.player_joins_round(self.name) # adds a new player to the next round's lineup
     end
     puts
   end
@@ -170,45 +168,45 @@ class Player
 
  # run through a player's cards in their hand to get the total
   def evaluate_hand
-    unless @kill_check
-      @value[@hands_counter] = 0
+    unless self.kill_check
+      self.value[self.hands_counter] = 0
       # sort by numbers first then by stings to get
       # then sort the hand's cards to do ACEs last
-      @hands[@hands_counter].sort_by {|target| target[0].to_i}.each do |card|
+      self.hands[self.hands_counter].sort_by {|target| target[0].to_i}.each do |card|
         if card[0] == 'A' # ACE cards need to determine best choice: 11 or 1
-          if (@value[@hands_counter] + 11) <= 21
-            @value[@hands_counter] += 11
-          elsif (@value[@hands_counter] + 1) <= 21
-            @value[@hands_counter] += 1
+          if (self.value[self.hands_counter] + 11) <= 21
+            self.value[self.hands_counter] += 11
+          elsif (self.value[self.hands_counter] + 1) <= 21
+            self.value[self.hands_counter] += 1
           else
             bust
           end
         elsif card[0].to_i == 0 # face card => 10 pts
-          @value[@hands_counter] += 10
+          self.value[self.hands_counter] += 10
         else # normal number => take face value
-          @value[@hands_counter] += card[0]
+          self.value[self.hands_counter] += card[0]
         end
       end
       # the checks below are special for the first turn only (2 cards)
-      if @hands[@hands_counter].length == 2
+      if self.hands[self.hands_counter].length == 2
         # checks for a blackjack on the first deal
-        if @value[@hands_counter] == 21
-          puts "#{@name}'s hand ##{@hands_counter+1} totals: #{@value[@hands_counter]}"
+        if self.value[self.hands_counter] == 21
+          puts "#{name}'s hand ##{self.hands_counter+1} totals: #{value[self.hands_counter]}"
           puts "Blackjack!"
         # checks for the option to split a hand (two cards with the same face)
-        elsif @hands[@hands_counter][0][0] == @hands[@hands_counter][1][0]
-          puts "#{@name}'s hand ##{@hands_counter+1} totals: #{@value[@hands_counter]}"
+        elsif self.hands[self.hands_counter][0][0] == self.hands[self.hands_counter][1][0]
+          puts "#{name}'s hand ##{self.hands_counter+1} totals: #{value[self.hands_counter]}"
           puts "This hand can be split if you wish."
         end
       else
         # if no special starting hands are found display standard message
-        puts "#{@name}'s hand ##{@hands_counter+1} totals: #{@value[@hands_counter]}"
+        puts "#{name}'s hand ##{hands_counter+1} totals: #{value[self.hands_counter]}"
       end
     end
   end
 
   def decide_next_move (casino)
-    if (@value[@hands_counter] <= 21)
+    if (self.value[self.hands_counter] <= 21)
       puts 'What do you want to do?'
       puts "Special cases: Double Down, Split, or Surrender: "
       print "Standard choices: Hit or Stand? "
@@ -217,8 +215,8 @@ class Player
       case choice
         when 'double down' # take one more card, double wager, and force stand on that hand
           then
-            if @hands[@hands_counter].length == 2 # only available if first turn
-              @wager += @wager
+            if self.hands[self.hands_counter].length == 2 # only available if first turn
+              self.wager += self.wager
               casino.deal_card(self)
               evaluate_hand
               stand
@@ -234,7 +232,7 @@ class Player
           then stand
         when 'split' # split hand and play each seperately
           then
-            if @hands[@hands_counter][0] == @hands[@hands_counter][1]
+            if self.hands[self.hands_counter][0] == self.hands[self.hands_counter][1]
               casino.split_hand(self)
             else
               puts "You cannot split that hand!"
@@ -242,9 +240,9 @@ class Player
             end
         when 'surrender' # allow late-surrender only! loose 1/2 wager and fold.
           then
-            if @hands[@hands_counter].length != 2 # only available after first turn
+            if self.hands[self.hands_counter].length != 2 # only available after first turn
               puts "You surrender this hand and fold."
-              @value[@hands_counter] = 100 # ie forces a bust
+              self.value[self.hands_counter] = 100 # ie forces a bust
               bust
             else
               puts "You cannot surrender a hand until having drawn at least one card."
@@ -261,7 +259,7 @@ class Player
 
   private
   def check_wager (bet) # check money wagered is less than or equal player's bank
-    unless bet <= @bank
+    unless bet <= self.bank
       return false
     else
       return true
@@ -270,15 +268,15 @@ class Player
 
   # end evaluate_hand loop w/o changing hand_value further.
   def stand
-    @kill_check = true
-    puts "#{@name} stands."
+    self.kill_check = true
+    puts "#{name} stands."
     puts
   end
 
   # hand went over 21 and player loses.
   def bust
-    @kill_check = true
-    puts "#{@name} has busted!"
+    self.kill_check = true
+    puts "#{name} has busted!"
     puts
   end
 end
@@ -294,8 +292,8 @@ class Dealer < Player
   end
 
   def decide_next_move (casino)
-    if @value[@hands_counter] <= 21
-      if @value[@hands_counter] < 17
+    if self.value[self.hands_counter] <= 21
+      if self.value[self.hands_counter] < 17
         casino.deal_card(self)
         take_a_turn (casino)
       else
@@ -307,46 +305,64 @@ class Dealer < Player
   end
 end
 
-# ------ runtime code below here ------
-# sets up the game with a casino, dealer, and a deck of cards
-casino = Casino.new
-casino.make_a_deck
-puts "Welcome to the world's finest blackjack casino."
-# get the # of initial players and their names from the users
-print 'How many players are playing? '
-num_players = gets.chomp.to_i
-counter = 1
-num_players.times do |player| # for each player playing get their name
-  print "What is Player #{counter}'s name? "
-  user_name = gets.chomp
-  casino.player_enters_casino(user_name) # adds a new player to the casino floot
-  counter += 1
+class Blackjack
+  # ------ blackjack game runtime code goes here ------
+  def start
+    # sets up the game with a casino, dealer, and a deck of cards
+    casino = Casino.new
+    casino.make_a_deck
+    puts "Welcome to the world's finest blackjack casino."
+    # get the # of initial players and their names from the users
+    print 'How many players are playing? '
+    num_players = gets.chomp.to_i
+    counter = 1
+    num_players.times do |player| # for each player playing get their name
+      print "What is Player #{counter}'s name? "
+      user_name = gets.chomp
+      casino.player_enters_casino(user_name) # adds a new player to the casino floot
+      counter += 1
+    end
+
+    while casino.casino_players != 0
+      dealer = Dealer.new # the dealers get tired quickly in this casino and need to be replaced often
+      puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      puts "Let's start the next round!"
+      puts "The Dealer will now be accepting bets."
+      puts
+      # allow for all players present in the casino to ante up and get in on the next round
+      casino.casino_players.each do |player|
+        player[1].ante_up(casino)
+      end
+      # let the get a hands for the round
+      casino.deal_out_hands (dealer)
+      # begin the main play allowing each player at the table to play in turn
+      casino.round_queue.each do |player|
+        player[1].display_hand
+        player[1].take_a_turn (casino)
+      end
+      # after the players have gone, the dealer shows his hand and plays
+      # if all players bust dealer does not go. Set score to 22.
+      viable_player = false
+      casino.round_queue.each do |player|
+        player[1].value.each do |hand_value|
+          if hand_value <= 21
+            viable_player = true
+          end
+        end
+      end
+      if viable_player
+        dealer.display_hand
+        dealer.take_a_turn (casino)
+      else
+        dealer.value = 22
+      end
+      # Setting the winnings/losses after the dealer busts or stands.
+      casino.settle_scores(dealer)
+    end
+    puts
+    puts "Thanks for playing!"
+  end
 end
 
-while casino.casino_players != 0
-  dealer = Dealer.new # the dealers get tired quickly in this casino and need to be replaced often
-  puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-  puts "Let's start the next round!"
-  puts "The Dealer will now be accepting bets."
-  puts
-  # allow for all players present in the casino to ante up and get in on the next round
-  casino.casino_players.each do |player|
-    player[1].ante_up(casino)
-  end
-  # let the get a hands for the round
-  casino.deal_out_hands (dealer)
-  # begin the main play allowing each player at the table to play in turn
-  casino.round_queue.each do |player|
-    player[1].display_hand
-    player[1].take_a_turn (casino)
-  end
-  # after the players have gone, the dealer shows his hand and plays
-  # if all players bust dealer does not go.
-  # set dealer score == 21 and move on to settling money.
-  dealer.display_hand
-  dealer.take_a_turn (casino)
-  # Setting the winnings/losses after the dealer busts or stands.
-  casino.settle_scores(dealer)
-end
-puts
-puts "Thank you for playing!"
+game = Blackjack.new
+game.start
