@@ -64,47 +64,55 @@ class Casino
   end
 
   # handles all of the money exchanges for the players who've not busted at the end of the round.
-  def settle_scores (dealer)
+  def standard_win (player)
+    winnings = player[1].wager * 2 # pays out 2:1
+    player[1].bank += winnings
+    puts "#{player[1].name}: won $#{winnings} and now has $#{player[1].bank} total."
+  end
+
+  def standard_loss (player)
+    puts "#{player[1].name}: lost $#{player[1].wager} and now has $#{player[1].bank} total."
+  end
+
+  def settle_scores (dealer_score)
     dealer_score = dealer.value[0]
     self.round_queue.each do |player|
       player[1].value.each do |player_score|
-        if player_score == 100
+        if player_score == 100 # player surrendered
           self.bank += self.wager/2
           puts "#{name} surrenders and recieves $#{wager/2}. Bank left: $#{bank}."
-        elsif dealer_score > 21 && player_score <= 21
-          winnings = player[1].wager * 2 # pays out 2:1
+        elsif player_score > 21 # player lost to dealer
+          standard_loss (player)
+        elsif player_score == 21 && player.hand[player.hands_counter] == 2 # player got Blackjack
+          puts "#{player[1].name} got blackjack!"
+          winnings = (player[1].wager + player[1].wager*(3.0/2.0)).to_i # pays out 3:2
           player[1].bank += winnings
-           puts "#{player[1].name}: won $#{winnings} and now has $#{player[1].bank} total."
-        else
-          if player_score > dealer_score && player_score <= 21
-            if player_score == 21
-              puts "#{player[1].name} got blackjack!"
-              winnings = (player[1].wager + player[1].wager*(3.0/2.0)).to_i # pays out 3:2
-              player[1].bank += winnings
-            else
-              winnings = player[1].wager * 2 # pays out 2:1
-              player[1].bank += winnings
-            end
-            puts "#{player[1].name}: won $#{winnings} and now has $#{player[1].bank} total."
+        elsif dealer_score > 21 # dealer busts. all other players not busted win.
+          standard_win (player)
+        else # player score <= 21
+          if player_score > dealer_score
+            standard_win (player)
           elsif player_score == dealer_score
               winnings = player[1].wager # pays back player's wager
               player[1].bank += winnings
               puts "#{player[1].name}: pushed and got back the bet of $#{winnings} and now has $#{player[1].bank} total."
           else # player lost to dealer
-            puts "#{player[1].name}: lost $#{player[1].wager} and now has $#{player[1].bank} total."
+            standard_loss (player)
           end
         end
-        player_leaves_round(player[1].name)
       end
-      if player[1].bank <= 0
-        puts "#{player[1].name} has run out of money and was kicked out of the casino!"
-        player_leaves_casino(player[1].name)
-      end
-    puts
+      puts
     end
   end
-end
 
+  def kick_broke_players (player)
+    if player[1].bank <= 0
+      puts "#{player[1].name} has run out of money and was kicked out of the casino!"
+      player_leaves_casino(player[1].name)
+    end
+    puts
+  end
+end
 
 class Player
   attr_accessor :hands, :hands_counter, :wager, :bank, :value, :kill_check
@@ -131,7 +139,7 @@ class Player
 
   def display_hand
     print "#{name}'s hand ##{self.hands_counter+1}: "
-    self.hands[self.hands_counter].each {|card| print "#{card.join("-")}, "}
+    self.hands[self.hands_counter].each {|card| print "#{card.join("-")},"}
     print " and totals: #{value[self.hands_counter]}"
     puts
   end
@@ -199,7 +207,7 @@ class Player
   end
 
   def decide_next_move (casino)
-    if (self.value[self.hands_counter] <= 21)
+    if self.value[self.hands_counter] <= 21
       puts 'What do you want to do?'
       puts "Special cases: Double Down, Split, or Surrender: "
       print "Standard choices: Hit or Stand? "
@@ -219,7 +227,7 @@ class Player
         when 'hit' # take one card
           then
             casino.deal_card(self)
-            player.take_a_turn (self)
+            take_a_turn (casino)
         when 'stand' # end round and take current score
           then stand
         when 'split' # split hand and play each seperately
@@ -233,6 +241,7 @@ class Player
           then
             if self.hands[self.hands_counter].length != 2 # only available after first turn
               puts "You surrender this hand and fold."
+              self.value[self.hands_counter] = 100 # ie forces a bust
               bust
             else
               reset_bad_choice(choice, casino)
@@ -268,7 +277,6 @@ class Player
 
   def bust # hand went over 21 and player loses.
     self.kill_check = true
-    self.value[self.hands_counter] = 100 # ie forces a bust
     puts "#{name} has busted!"
     puts
   end
@@ -299,11 +307,15 @@ class Dealer < Player
 end
 
 class Blackjack
-  def start # sets up the game with a casino, dealer, a deck of cards, and runs.
+  def start_casino # sets up the game with a casino, dealer, a deck of cards, and runs.
     casino = Casino.new
+    dealer = Dealer.new # the dealers get tired quickly in this casino and need to be replaced often
     casino.make_a_deck
     puts "Welcome to the world's finest blackjack casino."
-    # get the # of initial players and their names from the users
+    get_players
+  end
+
+  def get_players # get the # of initial players and their names from the users
     print 'How many players are playing? '
     num_players = gets.chomp.to_i
     counter = 1
@@ -313,9 +325,18 @@ class Blackjack
       casino.player_enters_casino(user_name) # adds a new player to the casino floot
       counter += 1
     end
+    begin_round_of_play
+  end
 
+  def begin_round_of_play
+    round_counter = 0 # setup a counter to track rounds played
     while casino.casino_players != 0
-      dealer = Dealer.new # the dealers get tired quickly in this casino and need to be replaced often
+      if round_counter == 10 # refresh deck after every 10 rounds
+        casino.make_a_deck
+        round_counter = 0 # reset round counter
+      else
+        round_counter += 1
+      end
       puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
       puts "Let's start the next round!"
       puts "The Dealer will now be accepting bets."
@@ -347,6 +368,7 @@ class Blackjack
       end
       # Setting the winnings/losses after the dealer busts or stands.
       casino.settle_scores(dealer)
+      kick_broke_players(player)
     end
     puts
     puts "Thanks for playing!"
@@ -354,4 +376,4 @@ class Blackjack
 end
 
 game = Blackjack.new
-game.start
+game.start_casino
