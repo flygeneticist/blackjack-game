@@ -74,7 +74,7 @@ class Casino
     puts "#{player[1].name}: lost $#{player[1].wager} and now has $#{player[1].bank} total."
   end
 
-  def settle_scores (dealer_score)
+  def settle_scores(dealer)
     dealer_score = dealer.value[0]
     self.round_queue.each do |player|
       player[1].value.each do |player_score|
@@ -312,10 +312,10 @@ class Blackjack
     dealer = Dealer.new # the dealers get tired quickly in this casino and need to be replaced often
     casino.make_a_deck
     puts "Welcome to the world's finest blackjack casino."
-    get_players
+    get_players(casino, dealer)
   end
 
-  def get_players # get the # of initial players and their names from the users
+  def get_players(casino, dealer) # get the # of initial players and their names from the users
     print 'How many players are playing? '
     num_players = gets.chomp.to_i
     counter = 1
@@ -325,10 +325,10 @@ class Blackjack
       casino.player_enters_casino(user_name) # adds a new player to the casino floot
       counter += 1
     end
-    begin_round_of_play
+    begin_round_of_play(casino, dealer)
   end
 
-  def begin_round_of_play
+  def begin_round_of_play(casino, dealer)
     round_counter = 0 # setup a counter to track rounds played
     while casino.casino_players != 0
       if round_counter == 10 # refresh deck after every 10 rounds
@@ -343,6 +343,7 @@ class Blackjack
       puts
       # allow for all players present in the casino to ante up and get in on the next round
       casino.casino_players.each do |player|
+        casino.kick_broke_players(player)
         player[1].ante_up(casino)
       end
       # let the get a hands for the round
@@ -368,7 +369,6 @@ class Blackjack
       end
       # Setting the winnings/losses after the dealer busts or stands.
       casino.settle_scores(dealer)
-      kick_broke_players(player)
     end
     puts
     puts "Thanks for playing!"
