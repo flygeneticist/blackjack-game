@@ -1,12 +1,12 @@
 class Player
-  attr_accessor :hands, :hands_counter, :wager, :bank, :value, :kill_check
+  attr_accessor :hands, :hand_counter, :wager, :bank, :value, :kill_check
   attr_reader :name
 
   def initialize (name)
     @kill_check = false
     @name = name
     @hands = []
-    @hands_counter = 0
+    @hand_counter = 0
     @value = []
     @bank = 1000
     @wager = 0
@@ -22,9 +22,9 @@ class Player
   end
 
   def display_hand
-    print "#{name}'s hand ##{self.hands_counter+1}: "
-    self.hands[self.hands_counter].each {|card| print "#{card.join("-")},"}
-    print " and totals: #{value[self.hands_counter]}"
+    print "#{name}'s hand ##{self.hand_counter+1}: "
+    self.hands[self.hand_counter].each {|card| print "#{card.join("-")}, "}
+    print "and totals: #{value[self.hand_counter]}"
     puts
   end
 
@@ -47,7 +47,7 @@ class Player
       self.wager = bet
       # reset the previous round's values and hands
       self.hands = []
-      self.hands_counter = 0
+      self.hand_counter = 0
       self.value = []
       puts "#{name} antes up $#{bet}. Bank left: $#{bank}."
       self.kill_check = false
@@ -58,40 +58,40 @@ class Player
 
  # run through a player's cards in their hand to get the total
   def evaluate_hand
-    self.value[self.hands_counter] = 0
+    self.value[self.hand_counter] = 0
     # sort by numbers first then by stings to get ACEs last
-    self.hands[self.hands_counter].sort_by {|target| target[0].to_i}.each do |card|
+    self.hands[self.hand_counter].sort_by {|target| target[0].to_i}.each do |card|
       if card[0] == 'A' # ACE cards need to determine best choice: 11 or 1
-        if (self.value[self.hands_counter] + 11) <= 21
-          self.value[self.hands_counter] += 11
-        elsif (self.value[self.hands_counter] + 1) <= 21
-          self.value[self.hands_counter] += 1
+        if (self.value[self.hand_counter] + 11) <= 21
+          self.value[self.hand_counter] += 11
+        elsif (self.value[self.hand_counter] + 1) <= 21
+          self.value[self.hand_counter] += 1
         else
           bust
         end
       elsif card[0].to_i == 0 # face card => 10 pts
-        self.value[self.hands_counter] += 10
+        self.value[self.hand_counter] += 10
       else # normal number => take face value
-        self.value[self.hands_counter] += card[0]
+        self.value[self.hand_counter] += card[0]
       end
     end
   end
 
   def check_for_special_hand
     # the checks below are special for the first turn only (2 cards)
-    if self.hands[self.hands_counter].length == 2
+    if self.hands[self.hand_counter].length == 2
       # checks for a blackjack on the first deal
-      if self.value[self.hands_counter] == 21
+      if self.value[self.hand_counter] == 21
         puts "Blackjack!"
       # checks for the option to split a hand (two cards with the same face)
-      elsif self.hands[self.hands_counter][0][0] == self.hands[self.hands_counter][1][0]
+      elsif self.hands[self.hand_counter][0][0] == self.hands[self.hand_counter][1][0]
         puts "This hand can be split if you wish."
       end
     end
   end
 
   def decide_next_move (casino)
-    if self.value[self.hands_counter] <= 21
+    if self.value[self.hand_counter] <= 21
       puts 'What do you want to do?'
       puts "Special cases: Double Down, Split, or Surrender: "
       print "Standard choices: Hit or Stand? "
@@ -100,9 +100,9 @@ class Player
       case choice
         when 'double down' # take one more card, double wager, and force stand on that hand
           then
-            if self.hands[self.hands_counter].length == 2 # only available if first turn
+            if self.hands[self.hand_counter].length == 2 # only available if first turn
               self.wager += self.wager
-              casino.deal_card(self)
+              casino.deck.deal_card(self)
               evaluate_hand
               stand
             else
@@ -110,22 +110,22 @@ class Player
             end
         when 'hit' # take one card
           then
-            casino.deal_card(self)
+            casino.deck.deal_card(self)
             take_a_turn (casino)
         when 'stand' # end round and take current score
           then stand
         when 'split' # split hand and play each seperately
           then
-            if self.hands[self.hands_counter][0] == self.hands[self.hands_counter][1]
+            if self.hands[self.hand_counter][0] == self.hands[self.hand_counter][1]
               casino.split_hand(self)
             else
               reset_bad_choice(choice, casino)
             end
         when 'surrender' # allow late-surrender only! loose 1/2 wager and fold.
           then
-            if self.hands[self.hands_counter].length != 2 # only available after first turn
+            if self.hands[self.hand_counter].length != 2 # only available after first turn
               puts "You surrender this hand and fold."
-              self.value[self.hands_counter] = 100 # ie forces a bust
+              self.value[self.hand_counter] = 100 # ie forces a bust
               bust
             else
               reset_bad_choice(choice, casino)

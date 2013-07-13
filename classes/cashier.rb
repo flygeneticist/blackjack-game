@@ -24,7 +24,7 @@ class Cashier
           puts "#{name} surrenders and recieves $#{wager/2}. Bank left: $#{bank}."
         elsif player_score > 21 # player lost to dealer
           standard_loss (player)
-        elsif player_score == 21 && player[1].hands[player[1].hands_counter] == 2 # player got Blackjack
+        elsif player_score == 21 && player[1].hands[player[1].hand_counter] == 2 # player got Blackjack
           puts "#{player[1].name} got blackjack!"
           winnings = (player[1].wager + player[1].wager*(3.0/2.0)).to_i # pays out 3:2
           player[1].bank += winnings

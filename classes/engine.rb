@@ -2,7 +2,6 @@ class Game_Engine
   def start_casino # sets up the game with a casino, dealer, a deck of cards, and runs.
     casino = Casino.new
     dealer = Dealer.new
-    casino.make_a_deck
     puts "Welcome to the world's finest blackjack casino."
     get_players(casino, dealer)
   end
@@ -32,7 +31,6 @@ class Game_Engine
       puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
       puts "Let's start the next round!"
       puts "The Dealer will now be accepting bets."
-      puts
       # allow for all players present in the casino to ante up and get in on the next round
       casino.casino_players.each do |player|
         casino.kick_broke_players(player)
