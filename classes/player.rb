@@ -61,7 +61,7 @@ class Player
     self.value[self.hand_counter] = 0
     # sort by numbers first then by stings to get ACEs last
     self.hands[self.hand_counter].sort_by {|target| target[0].to_i}.each do |card|
-      if card[0] == 'A' # ACE cards need to determine best choice: 11 or 1
+      if card.include? 'A' # ACE cards need to determine best choice: 11 or 1
         if (self.value[self.hand_counter] + 11) <= 21
           self.value[self.hand_counter] += 11
         elsif (self.value[self.hand_counter] + 1) <= 21

@@ -27,8 +27,8 @@ class Casino
 
   def deal_out_hands (dealer) # deals out hands using the new list of bidding players
     puts "No more bets please. The cards are being dealt."
-    self.round_queue.each do |player|
-      player[1].hands << deck.deal_new_hand
+    self.round_queue.each_value do |player|
+      player.hands << deck.deal_new_hand
     end
     dealer.hands << deck.deal_new_hand
     # let players know what the dealer's first card is.
@@ -45,9 +45,9 @@ class Casino
   end
 
   def kick_broke_players (player)
-    if player[1].bank <= 0
-      puts "#{player[1].name} has run out of money and was kicked out of the casino!"
-      self.casino_players.delete(player[1].name)
+    if player.bank <= 0
+      puts "#{player.name} has run out of money and was kicked out of the casino!"
+      self.casino_players.delete(player.name)
     end
     puts
   end

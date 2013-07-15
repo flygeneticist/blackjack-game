@@ -23,7 +23,7 @@ class Game_Engine
     round_counter = 0 # setup a counter to track rounds played
     while casino.casino_players != 0
       if round_counter == 10 # refresh deck after every 10 rounds
-        casino.make_a_deck
+        casino.deck = Deck.new
         round_counter = 0 # reset round counter
       else
         round_counter += 1
@@ -32,32 +32,34 @@ class Game_Engine
       puts "Let's start the next round!"
       puts "The Dealer will now be accepting bets."
       # allow for all players present in the casino to ante up and get in on the next round
-      casino.casino_players.each do |player|
+      casino.casino_players.each_value do |player|
         casino.kick_broke_players(player)
-        player[1].ante_up(casino)
+        player.ante_up(casino)
       end
       # let the get a hands for the round
       casino.deal_out_hands (dealer)
       # begin the main play allowing each player at the table to play in turn
-      casino.round_queue.each do |player|
-        player[1].take_a_turn (casino)
+      casino.round_queue.each_value do |player|
+        player.take_a_turn (casino)
       end
       # after the players have gone, the dealer shows his hand and plays
       # if all players bust dealer does not go. Set score to 22.
       viable_player = false
-      casino.round_queue.each do |player|
-        player[1].value.each do |hand_value|
+      casino.round_queue.each_value do |player|
+        player.value.each do |hand_value|
           if hand_value <= 21
             viable_player = true
           end
         end
       end
-      if viable_player
+
+      if viable_player == true
         dealer.take_a_turn (casino)
       else
         dealer.value = 22
       end
       settle_money_changes(dealer,casino.round_queue)
+      dealer = Dealer.new # new dealer comes to the table each round.
     end
     puts
     puts "Thanks for playing!"
